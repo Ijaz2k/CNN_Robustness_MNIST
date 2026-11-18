@@ -3,6 +3,7 @@
 CNN untuk pengenalan angka tulisan tangan (MNIST) beserta analisis ketahanannya terhadap gangguan citra: **noise**, **blur**, dan **rotasi**.
 
 | | |
+|---|---|
 | **Nama** | Rachmat Mukti Ilyas |
 | **NIM** | 101022330200 |
 | **Mata Kuliah** | Desain SoC dan FPGA |
