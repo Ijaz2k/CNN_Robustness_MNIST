@@ -1,0 +1,17 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset hasil generate (bisa dibuat ulang)
+dataset/perturbed/*.npz
+
+# Sistem operasi / editor
+.DS_Store
+Thumbs.db
+.vscode/
