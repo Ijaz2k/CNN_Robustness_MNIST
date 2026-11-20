@@ -155,6 +155,12 @@ Pengujian pada 10.000 citra test tanpa gangguan:
 
 ### 5.5 Grafik Perbandingan
 
+![Akurasi vs level gangguan](report/figures/akurasi_vs_gangguan.png)
+
+![Perbandingan baseline vs augmentasi](report/figures/perbandingan_biasa_vs_augmentasi.png)
+
+### 5.6 Analisis per Digit dan Kesalahan Klasifikasi
+
 Akurasi per digit pada rotasi +45° (10.000 citra test):
 
 | Digit | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
