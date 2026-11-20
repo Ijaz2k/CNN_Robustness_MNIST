@@ -1,248 +1,222 @@
 # Analisis Ketahanan CNN terhadap Noise, Blur, dan Rotasi pada Citra Angka Tulisan Tangan
 
-CNN untuk pengenalan angka tulisan tangan (MNIST) beserta analisis ketahanannya terhadap gangguan citra: **noise**, **blur**, dan **rotasi**.
+**Nama:** Rachmat Mukti Ilyas  
+**NIM:** 101022330200  
+**Mata Kuliah:** Desain SoC dan FPGA
 
-| | |
-|---|---|
-| **Nama** | Rachmat Mukti Ilyas |
-| **NIM** | 101022330200 |
-| **Mata Kuliah** | Desain SoC dan FPGA |
+Repositori ini berisi implementasi *end-to-end* Convolutional Neural Network (CNN) untuk pengenalan angka tulisan tangan **MNIST**, beserta analisis **ketahanan (*robustness*)** model terhadap tiga jenis gangguan citra: ***Gaussian noise***, ***Gaussian blur***, dan **rotasi**. Dua model dibandingkan: model **baseline** (dilatih pada data bersih) dan model **beraugmentasi** (dilatih pada data bersih ditambah data bergangguan).
 
 ---
 
-## Daftar Isi
+## 1. Latar Belakang & Dataset
 
-1. [Struktur Repositori](#struktur-repositori)
-2. [Latar Belakang dan Tujuan](#latar-belakang-dan-tujuan)
-3. [Dataset](#dataset)
-4. [Arsitektur CNN](#arsitektur-cnn)
-5. [Metode Pengujian Ketahanan](#metode-pengujian-ketahanan)
-6. [Hasil](#hasil)
-7. [Analisis](#analisis)
-8. [Kesimpulan](#kesimpulan)
-9. [Cara Menjalankan](#cara-menjalankan)
-10. [Status Pengerjaan](#status-pengerjaan)
-11. [Referensi](#referensi)
+Model pengenalan angka tulisan tangan umumnya dilatih dan dievaluasi pada citra yang bersih. Pada penggunaan nyata, citra dapat terganggu oleh kualitas sensor atau kamera (*noise*), fokus yang kurang tajam (*blur*), dan posisi kertas yang miring (rotasi). Karena itu akurasi pada data bersih saja belum cukup untuk menilai seberapa andal sebuah model. Proyek ini mengukur seberapa besar akurasi CNN turun ketika citra diganggu secara bertahap, dan apakah augmentasi data latih dapat memperbaiki ketahanannya.
 
----
+- **Dataset:** MNIST Handwritten Digits (dimuat otomatis melalui `tf.keras.datasets.mnist.load_data()`)
+- **Citra:** 28 × 28 piksel, 1 channel (*grayscale*), 10 kelas (angka 0-9), label *one-hot encoded*
+- **Pembagian Data:**
 
-## Struktur Repositori
-
-| Folder / File | Isi |
-|---|---|
-| `dataset/` | Informasi dataset, contoh gambar gangguan (`samples/`), dan dataset hasil generate (`perturbed/`, tidak di-upload) |
-| `python/` | Algoritma CNN: training, pembuatan gangguan, dan pengujian ketahanan |
-| `verilog/` | Implementasi hardware (tidak digunakan pada tugas ini) |
-| `report/` | Laporan hasil implementasi |
-| `README.md` | Dokumen ini |
-
-```
-CNN_Robustness_MNIST/
-├── dataset/
-│   ├── README.md
-│   ├── samples/
-│   │   └── contoh_gangguan.png
-│   └── perturbed/                 # dibuat oleh generate_datasets.py (di-ignore git)
-├── python/
-│   ├── perturbations.py           # fungsi noise, blur, rotasi
-│   ├── generate_datasets.py       # membuat dataset uji dengan gangguan
-│   ├── train_cnn_mnist.ipynb      # training CNN
-│   ├── robustness_test.ipynb      # pengujian ketahanan
-│   ├── model_cnn_mnist.h5         # bobot model hasil training
-│   └── requirements.txt
-├── verilog/
-│   └── README.md
-├── report/
-│   ├── laporan_UTS.pdf
-│   └── figures/
-├── .gitignore
-└── README.md
-```
-
----
-
-## Latar Belakang dan Tujuan
-
-**Latar belakang:** TODO (1-2 paragraf: mengapa ketahanan model terhadap gangguan citra penting, misalnya kualitas kamera, goresan, tulisan miring).
-
-**Rumusan masalah:**
-- TODO (contoh: Seberapa besar penurunan akurasi CNN saat citra diberi noise, blur, atau rotasi?)
-
-**Tujuan:**
-- Melatih CNN untuk pengenalan angka tulisan tangan pada MNIST.
-- Menguji akurasi CNN pada citra yang diberi noise, blur, dan rotasi dengan beberapa tingkat gangguan.
-- TODO (tambahkan bila ada, misalnya membandingkan model dengan dan tanpa augmentasi)
-
----
-
-## Dataset
-
-**MNIST Handwritten Digits**: 10 kelas (angka 0-9), citra grayscale 28 × 28 piksel, label *one-hot encoded*.
-
-| Bagian | Jumlah |
-|---|---|
-| Training | 55.000 |
-| Validation | 5.000 |
-| Test | 10.000 |
-
-Sumber data: dimuat otomatis dengan `tf.keras.datasets.mnist.load_data()`.
-
-### Dataset dengan gangguan
-
-Gangguan hanya diterapkan pada **data test**. Data latih tetap bersih. Dataset dibuat dengan `python/generate_datasets.py`.
-
-| Gangguan | Parameter | Level |
+| Bagian | Jumlah Citra | Keterangan |
 |---|---|---|
-| Gaussian noise | σ | 0, 0.1, 0.2, 0.3, 0.5 |
-| Gaussian blur | σ | 0, 0.5, 1.0, 1.5, 2.0 |
+| Training | 55.000 | Melatih model |
+| Validation | 5.000 | Memantau overfitting saat training |
+| Test | 10.000 | Evaluasi akhir dan dasar pembuatan data bergangguan |
+
+### Dataset Uji Bergangguan
+
+Gangguan hanya diterapkan pada **data test (10.000 citra)**. Label tidak berubah, karena gangguan tidak mengubah angka yang sebenarnya. Dataset dibuat dengan `python/generate_datasets.py` dan fungsi gangguannya ada di `python/perturbations.py`.
+
+| Gangguan | Parameter | Level Pengujian |
+|---|---|---|
+| Gaussian noise | σ | 0, 0,1, 0,2, 0,3, 0,5 |
+| Gaussian blur | σ | 0, 0,5, 1,0, 1,5, 2,0 |
 | Rotasi | sudut (derajat) | −45, −30, −15, 0, 15, 30, 45 |
 
-### Contoh citra
+Level `0` pada setiap jenis gangguan adalah data asli, yang dipakai sebagai titik pembanding (*baseline*).
 
-TODO: masukkan gambar dari `dataset/samples/`
-
-![Contoh gangguan](dataset/samples/contoh_gangguan.png)
+![Contoh citra bergangguan](dataset/samples/contoh_gangguan.png)
 
 ---
 
-## Arsitektur CNN
+## 2. Arsitektur Jaringan
 
-Arsitektur mengikuti referensi dari slide dosen.
+Arsitektur mengikuti referensi dari slide dosen (Aplikasi CNN pada Pengenalan Angka, Informatika ITS). Kedua model (baseline dan beraugmentasi) memakai arsitektur dan hyperparameter yang **sama persis**, sehingga satu-satunya perbedaan ada pada data latihnya.
 
-| Layer | Output Shape | Parameter |
-|---|---|---|
-| Conv2D (16, 3×3, ReLU, same) | (None, 28, 28, 16) | 160 |
-| MaxPooling2D (2×2) | (None, 14, 14, 16) | 0 |
-| Conv2D (32, 3×3, ReLU, same) | (None, 14, 14, 32) | 4.640 |
-| MaxPooling2D (2×2) | (None, 7, 7, 32) | 0 |
-| Flatten | (None, 1568) | 0 |
-| Dense (64, ReLU) | (None, 64) | 100.416 |
-| Dense (10, Softmax) | (None, 10) | 650 |
-| **Total** | | **105.866** |
+| Layer | Konfigurasi | Dimensi Output | Jumlah Parameter |
+|---|---|---|---|
+| **Input** | Grayscale 1-channel | `28 × 28 × 1` | - |
+| **Conv1** | 16 filter `3×3`, ReLU, padding `same` | `28 × 28 × 16` | 160 |
+| **MaxPool1** | `2×2` | `14 × 14 × 16` | 0 |
+| **Conv2** | 32 filter `3×3`, ReLU, padding `same` | `14 × 14 × 32` | 4.640 |
+| **MaxPool2** | `2×2` | `7 × 7 × 32` | 0 |
+| **Flatten** | - | `1568` | 0 |
+| **Dense1** | 64 neuron, ReLU | `64` | 100.416 |
+| **Dense2 (Output)** | 10 neuron, Softmax | `10` | 650 |
+| **Total** | - | - | **105.866** |
 
 **Konfigurasi training:**
 
 | Parameter | Nilai |
 |---|---|
 | Optimizer | Adam |
-| Loss | categorical_crossentropy |
+| Loss | `categorical_crossentropy` |
+| Metrik | Akurasi |
 | Epochs | 10 |
 | Batch size | 100 |
+| Data validasi | 5.000 citra bersih |
 
-TODO: cocokkan tabel dengan hasil `model.summary()` yang sebenarnya.
+**Model beraugmentasi:** data latih bersih (55.000) ditambah salinan yang diberi gangguan, masing-masing 6.000 citra acak per level.
 
----
+| Gangguan augmentasi | Level | Tambahan Citra |
+|---|---|---|
+| Gaussian noise | σ = 0,1, 0,3, 0,5 | 18.000 |
+| Gaussian blur | σ = 0,5, 1,0, 1,5 | 18.000 |
+| Rotasi | −30°, −15°, 15°, 30° | 24.000 |
+| **Total data latih** | | **115.000** |
 
-## Metode Pengujian Ketahanan
-
-TODO: jelaskan alur pengujian.
-
-1. Latih CNN pada data MNIST bersih.
-2. Muat dataset uji bergangguan dari `dataset/perturbed/`.
-3. Hitung akurasi model pada tiap jenis dan tiap level gangguan.
-4. Bandingkan dengan akurasi baseline (tanpa gangguan).
-
-TODO (opsional): eksperimen kedua dengan model yang dilatih memakai augmentasi.
+Label citra bergangguan sama dengan label citra aslinya. Data validasi dan data test tidak ikut diaugmentasi.
 
 ---
 
-## Hasil
+## 3. Metode Pengujian Ketahanan
 
-### Baseline (tanpa gangguan)
+1. Latih model **baseline** pada 55.000 citra bersih (`train_cnn_mnist.ipynb`).
+2. Latih model **beraugmentasi** pada 115.000 citra (`train_cnn_augmented.ipynb`).
+3. Buat dataset uji bergangguan dari 10.000 citra test (`generate_datasets.py`).
+4. Hitung akurasi kedua model pada setiap jenis dan level gangguan (`robustness_test.ipynb`).
+5. Analisis penurunan akurasi, akurasi per digit, *confusion matrix*, dan contoh prediksi salah.
 
-| Metrik | Nilai |
-|---|---|
-| Test accuracy | TODO |
-| Test loss | TODO |
+Level rotasi ±45° dan noise σ = 0,2 **tidak** dipakai saat augmentasi, sehingga menjadi uji generalisasi ke gangguan yang belum pernah dilihat model.
 
-TODO: masukkan grafik training vs validation (`report/figures/`).
+---
 
-### Akurasi terhadap Gaussian noise
+## 4. Struktur Repositori
 
-| σ | 0 | 0.1 | 0.2 | 0.3 | 0.5 |
+```
+CNN_Robustness_MNIST/
+├── dataset/                    # Informasi dataset & contoh citra gangguan
+│   ├── samples/                # Contoh citra asli vs noise, blur, rotasi
+│   │   └── contoh_gangguan.png
+│   └── README.md               # Penjelasan dataset & cara membuat dataset bergangguan
+├── python/                     # Tahap Software: training, gangguan, & pengujian
+│   ├── perturbations.py        # Fungsi Gaussian noise, blur, & rotasi
+│   ├── generate_datasets.py    # Pembuat dataset uji bergangguan (.npz)
+│   ├── train_cnn_mnist.ipynb   # Training model baseline
+│   ├── train_cnn_augmented.ipynb  # Training model beraugmentasi
+│   ├── robustness_test.ipynb   # Pengujian ketahanan & perbandingan kedua model
+│   ├── model_cnn_mnist.keras   # Bobot model baseline
+│   ├── model_cnn_augmented.keras  # Bobot model beraugmentasi
+│   └── requirements.txt        # Daftar library Python
+├── verilog/                    # Tahap RTL (tidak digunakan pada tugas ini)
+│   └── README.md
+├── report/                     # Laporan, grafik, & hasil pengujian
+│   ├── figures/                # Grafik training, akurasi, confusion matrix
+│   ├── laporan_UTS.pdf         # Laporan proyek
+│   └── README.md
+├── .gitignore                  # Mengabaikan .venv, cache, & dataset hasil generate (.npz)
+└── README.md                   # Laporan utama proyek
+```
+
+---
+
+## 5. Hasil Pengujian & Evaluasi
+
+### 5.1 Performa pada Data Bersih
+
+Pengujian pada 10.000 citra test tanpa gangguan:
+
+| Model | Akurasi Test | Loss Test | Keterangan |
+|---|---|---|---|
+| **Baseline** | **XX,XX%** | X,XXXX | Dilatih pada 55.000 citra bersih |
+| **Beraugmentasi** | **XX,XX%** | X,XXXX | Dilatih pada 115.000 citra (bersih + bergangguan) |
+
+![Kurva training](report/figures/training_curve.png)
+
+### 5.2 Akurasi terhadap Gaussian Noise
+
+| σ noise | 0 | 0,1 | 0,2 | 0,3 | 0,5 |
 |---|---|---|---|---|---|
-| Akurasi | TODO | TODO | TODO | TODO | TODO |
+| **Baseline** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
+| **Beraugmentasi** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
 
-### Akurasi terhadap Gaussian blur
+### 5.3 Akurasi terhadap Gaussian Blur
 
-| σ | 0 | 0.5 | 1.0 | 1.5 | 2.0 |
+| σ blur | 0 | 0,5 | 1,0 | 1,5 | 2,0 |
 |---|---|---|---|---|---|
-| Akurasi | TODO | TODO | TODO | TODO | TODO |
+| **Baseline** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
+| **Beraugmentasi** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
 
-### Akurasi terhadap rotasi
+### 5.4 Akurasi terhadap Rotasi
 
 | Sudut | −45° | −30° | −15° | 0° | 15° | 30° | 45° |
 |---|---|---|---|---|---|---|---|
-| Akurasi | TODO | TODO | TODO | TODO | TODO | TODO | TODO |
+| **Baseline** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
+| **Beraugmentasi** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
 
-### Grafik dan visualisasi
+### 5.5 Grafik Perbandingan
 
-TODO: grafik akurasi vs level gangguan, confusion matrix, contoh prediksi benar dan salah.
+![Akurasi vs level gangguan](report/figures/akurasi_vs_gangguan.png)
 
----
+![Perbandingan baseline vs augmentasi](report/figures/perbandingan_biasa_vs_augmentasi.png)
 
-## Analisis
+### 5.6 Analisis per Digit dan Kesalahan Klasifikasi
 
-TODO:
-- Jenis gangguan mana yang paling menurunkan akurasi, dan mengapa.
-- Digit mana yang paling rentan (berdasarkan confusion matrix).
-- Pada level berapa akurasi turun secara signifikan.
-- Perbandingan dengan model beraugmentasi (jika dikerjakan).
-- Keterbatasan penelitian.
+Pada rotasi +45° (gangguan paling berat untuk rotasi):
 
----
+![Akurasi per digit](report/figures/akurasi_per_digit_rot45.png)
 
-## Kesimpulan
+![Confusion matrix](report/figures/confusion_rot45.png)
 
-TODO
+![Contoh prediksi salah](report/figures/contoh_salah_rot45.png)
 
 ---
 
-## Cara Menjalankan
+## 6. Analisis
 
-**1. Clone repositori dan buat environment**
+1. **Gangguan paling merusak:** [isi: jenis gangguan dengan penurunan akurasi terbesar pada level terberat, sebutkan angkanya, misalnya dari XX% menjadi XX%].
+2. **Titik penurunan tajam:** [isi: pada level berapa akurasi mulai turun signifikan untuk tiap gangguan].
+3. **Digit paling rentan:** [isi: digit dengan akurasi terendah pada rotasi +45° dan pasangan yang sering tertukar menurut *confusion matrix*, serta alasan visualnya].
+4. **Efek augmentasi:** [isi: pada gangguan apa model beraugmentasi paling membaik dan seberapa besar selisihnya; apakah akurasi pada data bersih berubah].
+5. **Generalisasi ke level yang belum dilihat:** [isi: hasil pada noise σ = 0,2 dan rotasi ±45°, yang tidak dipakai saat augmentasi].
+6. **Keterbatasan:** gangguan bersifat sintetis (bukan noise sensor nyata), hanya satu arsitektur CNN kecil yang diuji, dan hanya satu dataset (MNIST).
+
+---
+
+## 7. Kesimpulan
+
+[isi: 3-4 kalimat yang menjawab tujuan: gangguan mana yang paling memengaruhi CNN, apakah augmentasi efektif, dan rekomendasi singkat.]
+
+---
+
+## 8. Cara Menjalankan
+
+> Gunakan Python 3.11 atau 3.12 (TensorFlow hanya mendukung versi Python tertentu; cek tensorflow.org/install/pip untuk versi terbaru).
+
+### A. Clone Repositori dan Pasang Library
 
 ```bash
-git clone https://github.com/USERNAME/CNN_Robustness_MNIST.git
+git clone https://github.com/Ijaz2k/CNN_Robustness_MNIST.git
 cd CNN_Robustness_MNIST
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 pip install -r python/requirements.txt
 ```
 
-**2. Buat dataset bergangguan**
+### B. Buat Dataset Uji Bergangguan
 
 ```bash
 python python/generate_datasets.py
 ```
 
-**3. Latih model**
+File `.npz` akan tersimpan di `dataset/perturbed/` (tidak di-upload ke GitHub karena bisa dibuat ulang).
 
-Jalankan `python/train_cnn_mnist.ipynb`.
+### C. Latih Model
 
-**4. Uji ketahanan**
+Jalankan notebook berikut berurutan (pilih kernel `.venv`):
 
-Jalankan `python/robustness_test.ipynb`.
+1. `python/train_cnn_mnist.ipynb` untuk model baseline
+2. `python/train_cnn_augmented.ipynb` untuk model beraugmentasi
 
-> Catatan: TensorFlow hanya mendukung versi Python tertentu. Gunakan Python 3.11 atau 3.12, dan cek tensorflow.org/install/pip untuk versi terbaru yang didukung.
+### D. Uji Ketahanan
 
----
-
-## Status Pengerjaan
-
-- [x] Struktur repositori
-- [x] Fungsi gangguan (`perturbations.py`)
-- [x] Pembuatan dataset bergangguan
-- [ ] Training CNN
-- [ ] Pengujian ketahanan
-- [ ] Analisis hasil
-- [ ] Laporan akhir
-
----
-
-## Referensi
-
-- Slide kuliah: Aplikasi CNN pada Pengenalan Angka, Informatika ITS.
-- LeCun, Y., Cortes, C., Burges, C. *The MNIST database of handwritten digits.*
-- Repositori acuan struktur: https://github.com/rizki-ap/CNN
-- TODO: tambahkan referensi lain
+Jalankan `python/robustness_test.ipynb`. Grafik hasil tersimpan di `report/figures/`.
