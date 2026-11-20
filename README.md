@@ -127,8 +127,8 @@ Pengujian pada 10.000 citra test tanpa gangguan:
 
 | Model | Akurasi Test | Loss Test | Keterangan |
 |---|---|---|---|
-| **Baseline** | **XX,XX%** | X,XXXX | Dilatih pada 55.000 citra bersih |
-| **Beraugmentasi** | **XX,XX%** | X,XXXX | Dilatih pada 115.000 citra (bersih + bergangguan) |
+| **Baseline** | **98,74%** | 0.0431 | Dilatih pada 55.000 citra bersih |
+| **Beraugmentasi** | **99,10%** | 0.0451 | Dilatih pada 115.000 citra (bersih + bergangguan) |
 
 ![Kurva training](report/figures/training_curve.png)
 
@@ -136,32 +136,33 @@ Pengujian pada 10.000 citra test tanpa gangguan:
 
 | σ noise | 0 | 0,1 | 0,2 | 0,3 | 0,5 |
 |---|---|---|---|---|---|
-| **Baseline** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
-| **Beraugmentasi** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
+| **Baseline** | 98,74% | 98,49% | 97,81% | 94,36% | 62,87% |
+| **Beraugmentasi** | 99,10% | 99,06% | 98,81% | 98,08% | 92,56% |
 
 ### 5.3 Akurasi terhadap Gaussian Blur
 
 | σ blur | 0 | 0,5 | 1,0 | 1,5 | 2,0 |
 |---|---|---|---|---|---|
-| **Baseline** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
-| **Beraugmentasi** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
+| **Baseline** | 98,74% | 98,68% | 98,30% | 96,67% | 92,26% |
+| **Beraugmentasi** | 99,10% | 99,06% | 98,78% | 98,03% | 96,32% |
 
 ### 5.4 Akurasi terhadap Rotasi
 
 | Sudut | −45° | −30° | −15° | 0° | 15° | 30° | 45° |
 |---|---|---|---|---|---|---|---|
-| **Baseline** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
-| **Beraugmentasi** | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% | XX,XX% |
+| **Baseline** | 46,35% | 77,95% | 95,89% | 98,74% | 96,67% | 82,99% | 54,80% |
+| **Beraugmentasi** | 86,67% | 96,51% | 98,60% | 99,10% | 98,43% | 96,14% | 87,25% |
 
 ### 5.5 Grafik Perbandingan
 
-![Akurasi vs level gangguan](report/figures/akurasi_vs_gangguan.png)
+Akurasi per digit pada rotasi +45° (10.000 citra test):
 
-![Perbandingan baseline vs augmentasi](report/figures/perbandingan_biasa_vs_augmentasi.png)
+| Digit | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Baseline** | 94,69% | 60,26% | 50,00% | 42,77% | 26,48% | 44,73% | 80,58% | 15,08% | 50,00% | 83,94% |
+| **Beraugmentasi** | 98,78% | 97,36% | 81,69% | 90,30% | 75,36% | 88,12% | 87,79% | 83,46% | 73,61% | 94,65% |
+| Selisih (poin) | +4,09 | +37,10 | +31,69 | +47,53 | +48,88 | +43,39 | +7,21 | +68,38 | +23,61 | +10,71 |
 
-### 5.6 Analisis per Digit dan Kesalahan Klasifikasi
-
-Pada rotasi +45° (gangguan paling berat untuk rotasi):
 
 ![Akurasi per digit](report/figures/akurasi_per_digit_rot45.png)
 
@@ -173,18 +174,18 @@ Pada rotasi +45° (gangguan paling berat untuk rotasi):
 
 ## 6. Analisis
 
-1. **Gangguan paling merusak:** [isi: jenis gangguan dengan penurunan akurasi terbesar pada level terberat, sebutkan angkanya, misalnya dari XX% menjadi XX%].
-2. **Titik penurunan tajam:** [isi: pada level berapa akurasi mulai turun signifikan untuk tiap gangguan].
-3. **Digit paling rentan:** [isi: digit dengan akurasi terendah pada rotasi +45° dan pasangan yang sering tertukar menurut *confusion matrix*, serta alasan visualnya].
-4. **Efek augmentasi:** [isi: pada gangguan apa model beraugmentasi paling membaik dan seberapa besar selisihnya; apakah akurasi pada data bersih berubah].
-5. **Generalisasi ke level yang belum dilihat:** [isi: hasil pada noise σ = 0,2 dan rotasi ±45°, yang tidak dipakai saat augmentasi].
-6. **Keterbatasan:** gangguan bersifat sintetis (bukan noise sensor nyata), hanya satu arsitektur CNN kecil yang diuji, dan hanya satu dataset (MNIST).
+1. **Gangguan paling merusak: rotasi.** Pada baseline, akurasi turun dari 98,74% (data bersih) menjadi 46,35% pada rotasi −45° (turun 52,39 poin) dan 54,80% pada +45° (turun 43,94 poin). Noise σ = 0,5 menurunkan akurasi menjadi 62,87% (turun 35,87 poin), sedangkan blur σ = 2,0 hanya menurunkannya menjadi 92,26% (turun 6,48 poin). Urutan dari yang paling merusak adalah rotasi, noise, lalu blur. Perbandingan ini dilakukan pada level terberat yang diuji, dan satuan level tiap gangguan berbeda, sehingga bukan perbandingan pada intensitas yang setara. Model baseline hanya melihat digit tegak saat training, dan *max pooling* hanya memberi toleransi terhadap pergeseran kecil, bukan rotasi. Akurasi pada −45° juga 8,45 poin lebih rendah daripada pada +45°, sehingga arah rotasi memengaruhi hasil.
+2. **Titik penurunan tajam:** [isi: level noise, blur, dan rotasi tempat akurasi baseline mulai turun lebih dari 5 poin, dari tabel 5.2 sampai 5.4].
+3. **Digit paling rentan:** Pada rotasi +45°, baseline paling lemah pada digit **7** (15,08%) dan **4** (26,48%), lalu digit 3 (42,77%) dan 5 (44,73%). Digit **0** paling stabil (94,69%), kemungkinan karena bentuknya mendekati simetris terhadap rotasi. Pada model beraugmentasi, digit terlemah menjadi **8** (73,61%) dan **4** (75,36%), dan semua digit berada di atas 73%. Digit 4 tetap termasuk yang paling rentan pada kedua model. [isi: pasangan digit yang paling sering tertukar, dari `confusion_rot45.png`].
+4. **Efek augmentasi: sangat membantu.** Pada level terberat, akurasi naik dari 62,87% menjadi 92,56% untuk noise σ = 0,5 (+29,69 poin), dari 92,26% menjadi 96,32% untuk blur σ = 2,0 (+4,06 poin), dan dari 46,35% / 54,80% menjadi 86,67% / 87,25% untuk rotasi −45° / +45° (+40,32 / +32,45 poin). Akurasi pada data bersih tidak turun, melainkan naik tipis dari 98,74% menjadi 99,10% (+0,36 poin). Pada rotasi +45°, peningkatan terbesar ada pada digit 7 (+68,38 poin), 4 (+48,88 poin), dan 3 (+47,53 poin).
+5. **Generalisasi ke level yang belum dilihat:** Rotasi ±45° tidak dipakai saat augmentasi (hanya ±15° dan ±30°), namun akurasi model beraugmentasi tetap 86,67% dan 87,25%, jauh di atas baseline. Blur σ = 2,0 juga di luar rentang augmentasi (maksimum σ = 1,5) dan tetap mencapai 96,32%. Namun model beraugmentasi belum sepenuhnya tahan: pada noise σ = 0,5 (yang termasuk level augmentasi) akurasinya masih 6,54 poin di bawah data bersih, dan pada rotasi ±45° masih sekitar 12 poin di bawahnya. [isi: hasil noise σ = 0,2 dari tabel 5.2].
+6. **Keterbatasan:** gangguan bersifat sintetis (bukan noise sensor nyata), hanya satu arsitektur CNN kecil yang diuji, hanya satu dataset (MNIST), dan hasil berasal dari satu kali training tanpa pengulangan dengan *seed* berbeda, sehingga selisih kecil (seperti +0,36 poin pada data bersih) belum tentu signifikan.
 
 ---
 
 ## 7. Kesimpulan
 
-[isi: 3-4 kalimat yang menjawab tujuan: gangguan mana yang paling memengaruhi CNN, apakah augmentasi efektif, dan rekomendasi singkat.]
+CNN baseline mencapai akurasi 98,74% pada data bersih, tetapi ketahanannya berbeda untuk tiap gangguan. Rotasi ±45° paling merusak (akurasi turun menjadi 46,35% dan 54,80%), diikuti noise σ = 0,5 (62,87%), sedangkan blur σ = 2,0 paling ringan dampaknya (92,26%). Melatih model dengan data bergangguan terbukti efektif: akurasi pada level terberat naik menjadi 92,56% (noise), 96,32% (blur), dan 86,67% / 87,25% (rotasi ±45°), tanpa mengorbankan akurasi data bersih (99,10%). Augmentasi juga meningkatkan ketahanan pada level yang tidak dipakai saat training, tetapi model belum sepenuhnya kebal terhadap gangguan berat, sehingga augmentasi yang lebih luas atau arsitektur yang lebih besar dapat menjadi pengembangan lanjutan.
 
 ---
 
