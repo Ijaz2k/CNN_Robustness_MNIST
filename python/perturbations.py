@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter, rotate
 
 # Semua fungsi: input X berbentuk (N, 28, 28, 1), nilai 0-1 (float)
-
+# distortion functions: Gaussian noise, blur, and rotation
 def add_gaussian_noise(X, sigma, seed=42):
     """Tambah noise Gaussian. seed tetap agar hasil bisa direproduksi."""
     rng = np.random.default_rng(seed)
