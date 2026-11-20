@@ -3,6 +3,7 @@ import numpy as np
 from tensorflow.keras.datasets import mnist
 from perturbations import add_gaussian_noise, add_blur, add_rotation
 
+# Dataset Generator
 # Lokasi output: <root repo>/dataset/perturbed/
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'dataset' / 'perturbed'
